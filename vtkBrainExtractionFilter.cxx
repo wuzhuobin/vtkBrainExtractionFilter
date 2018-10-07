@@ -202,6 +202,12 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	//{
 	//	bt = Min(1., Max(0., bet_main_parameter + local_th*((*i)->get_coord().Z - zcog) / radius));
 	//}
+	// @todo 
+	// in paper d1 = 20mm, d2 = d1 / 2 ;
+	// paper's way is the following: 
+	//const int d1 = 20;
+	//const int d2 = d1 / 2;
+	// source code is the following: 
 	const int d1 = 7;
 	const int d2 = 3;
 	const float normal_max_update_fraction = 0.5f;
@@ -219,59 +225,91 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	memcpy(u3_f, normals_f, 3 * numPoints * sizeof(float));
 	double dscale = vtkMath::Min(vtkMath::Min(vtkMath::Min(1.0, spacing[0]), spacing[1]), spacing[2]);
 	for (vtkIdType id = 0; id < numPoints; ++id) {
+		// @todo 
+		// calculate in paper Imin = MAX(t2, MIN(tm, I(0), I(1), ..., I(d1))), Imax = MIN(tm, MAX(t, I(0), I(1), ...I(d2)))
+		// papaer's code is the following: 
 		float Imin = tm;
 		float Imax = t;
-		float f3 = 0;
-		float p[3];
-		vtkMath::Subtract(points_f + 3 * id, normals_f + 3 * id, p);
-		float iv = (p[0] - origin[0]) / spacing[0] + 0.5;
-		float jv = (p[1] - origin[1]) / spacing[1] + 0.5;
-		float kv = (p[2] - origin[2]) / spacing[2] + 0.5;
-		if (extent[0] <= (int)iv && (int)iv <= extent[1] &&
-			extent[2] <= (int)jv && (int)jv <= extent[3] &&
-			extent[4] <= (int)kv && (int)kv <= extent[5]) {
-			float im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
-			Imin = vtkMath::Min(Imin, im);
-			Imax = vtkMath::Max(Imax, im);
-			float nxv = normals_f[id * 3 + 0] / spacing[0];
-			float nyv = normals_f[id * 3 + 1] / spacing[1];
-			float nzv = normals_f[id * 3 + 2] / spacing[2];
-			int i2 = iv - (d1 - 1)*nxv;
-			int j2 = jv - (d1 - 1)*nyv;
-			int k2 = kv - (d1 - 1)*nzv;
-			if (extent[0] <= i2 && i2 <= extent[1] &&
-				extent[2] <= j2 && j2 <= extent[3] &&
-				extent[4] <= k2 && k2 <= extent[5]) {
-				im = data->GetScalarComponentAsFloat(i2, j2, k2, 0);
+		for (float step = 0; step < d1; ++step) {
+			float p[3];
+			float n[3];
+			memcpy(n, normals_f + 3 * id, sizeof(float) * 3);
+			vtkMath::MultiplyScalar(n, step);
+			vtkMath::Subtract(points_f + 3 * id, n, p);
+			int ijk[3];
+			ijk[0] = vtkMath::Round((p[0] - origin[0]) / spacing[0]);
+			ijk[1] = vtkMath::Round((p[1] - origin[1]) / spacing[1]);
+			ijk[2] = vtkMath::Round((p[2] - origin[2]) / spacing[2]);
+			if (extent[0] <= ijk[0] && ijk[0] <= extent[1] &&
+				extent[2] <= ijk[1] && ijk[1] <= extent[3] &&
+				extent[4] <= ijk[2] && ijk[2] <= extent[5]) {
+				float im = data->GetScalarComponentAsFloat(ijk[0], ijk[1], ijk[2], 0);
 				Imin = vtkMath::Min(Imin, im);
-				nxv *= dscale;
-				nyv *= dscale;
-				nzv *= dscale;
-				for (double gi = 2.0; gi < d1; gi += dscale)
-				{
-					iv -= nxv; jv -= nyv; kv -= nzv;
-					im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
-					Imin = vtkMath::Min(Imin, im);
-
-					if (gi < d2) {
-						Imax = vtkMath::Max(Imax, im);
-					}
-				}
-
-				Imin = vtkMath::Max((float)t2, Imin);
-				Imax = vtkMath::Min((float)tm, Imax);
-
-				const float tl = (Imax - t2) * bt + t2;
-				if (Imax - t2 > 0) {
-					f3 = 2 * (Imin - tl) / (Imax - t2);
-				}
-				else {
-					f3 = (Imin - tl) * 2;
+				if (step < d2) {
+					Imax = vtkMath::Max(Imax, im);
 				}
 			}
 		}
+		Imin = vtkMath::Max((float)t2, Imin);
+		Imax = vtkMath::Min((float)tm, Imax);
+		const float tl = (Imax - t2) * bt + t2;
+		float f3 = 2 * (Imin - tl) / (Imax - t2);
 		f3 *= (normal_max_update_fraction * lambda_fit * l);
 		vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
+		// source code is the following: 
+		//float Imin = tm;
+		//float Imax = t;
+		//float f3 = 0;
+		//float p[3];
+		//vtkMath::Subtract(points_f + 3 * id, normals_f + 3 * id, p);
+		//float iv = vtkMath::Round((p[0] - origin[0]) / spacing[0]);
+		//float jv = vtkMath::Round((p[1] - origin[1]) / spacing[1]);
+		//float kv = vtkMath::Round((p[2] - origin[2]) / spacing[2]);
+		//if (extent[0] <= (int)iv && (int)iv <= extent[1] &&
+		//	extent[2] <= (int)jv && (int)jv <= extent[3] &&
+		//	extent[4] <= (int)kv && (int)kv <= extent[5]) {
+		//	float im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
+		//	Imin = vtkMath::Min(Imin, im);
+		//	Imax = vtkMath::Max(Imax, im);
+		//	float nxv = normals_f[id * 3 + 0] / spacing[0];
+		//	float nyv = normals_f[id * 3 + 1] / spacing[1];
+		//	float nzv = normals_f[id * 3 + 2] / spacing[2];
+		//	int i2 = iv - (d1 - 1)*nxv;
+		//	int j2 = jv - (d1 - 1)*nyv;
+		//	int k2 = kv - (d1 - 1)*nzv;
+		//	if (extent[0] <= i2 && i2 <= extent[1] &&
+		//		extent[2] <= j2 && j2 <= extent[3] &&
+		//		extent[4] <= k2 && k2 <= extent[5]) {
+		//		im = data->GetScalarComponentAsFloat(i2, j2, k2, 0);
+		//		Imin = vtkMath::Min(Imin, im);
+		//		nxv *= dscale;
+		//		nyv *= dscale;
+		//		nzv *= dscale;
+		//		for (double gi = 2.0; gi < d1; gi += dscale)
+		//		{
+		//			iv -= nxv; jv -= nyv; kv -= nzv;
+		//			im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
+		//			Imin = vtkMath::Min(Imin, im);
+
+		//			if (gi < d2) {
+		//				Imax = vtkMath::Max(Imax, im);
+		//			}
+		//		}
+
+		//		Imin = vtkMath::Max((float)t2, Imin);
+		//		Imax = vtkMath::Min((float)tm, Imax);
+
+		//		const float tl = (Imax - t2) * bt + t2;
+		//		if (Imax - t2 > 0) {
+		//			f3 = 2 * (Imin - tl) / (Imax - t2);
+		//		}
+		//		else {
+		//			f3 = (Imin - tl) * 2;
+		//		}
+		//	}
+		//}
+		//f3 *= (normal_max_update_fraction * lambda_fit * l);
+		//vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
 	}
 	//////////////////////////////////////// u ////////////////////////////////////////
 	//std::cerr  << "u\n";
