@@ -58,10 +58,13 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 	std::cerr << bp;
 	//vtkBrainExtractionDecorator::normalsCentroidNeighbourDistance(output, output);
 	double fraction_threshold = 0.5;
+	vtkPolyData *originalPolyData = vtkPolyData::New();
 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
 		vtkBrainExtractionFilter::StepOfComputation(input, output0, 0, 1.0, 0, pow(fraction_threshold, 0.275), bp.t98, bp.t2, bp.t, bp.tm);
 		std::cerr << "Interation Number: " << this->IterationNumber << '\n';
 	}
+	
+	originalPolyData->Delete();
 	output1->DeepCopy(input);
 	this->decorator->generateLabelImage(output1);
 	output1->ShallowCopy(this->decorator->polyDataToImage(output0, output1));

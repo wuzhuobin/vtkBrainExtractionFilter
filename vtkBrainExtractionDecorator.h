@@ -41,7 +41,9 @@ public:
 	void generateLabelImage(vtkImageData *image, double label = 1.0);
 	vtkImageData* polyDataToImage(vtkPolyData* polyData, vtkImageData *imageData);
 	BET_Parameters initialParameters(vtkImageData *imageData, vtkPolyData *polyData, vtkPolyData *output);
+	void mediumDistanceOfNeighbours(vtkPolyData *polyData) const;
 	void normalsCentroidsNeighbourDistance(vtkPolyData *input, vtkPolyData *output);
+	const double selfIntersection(vtkPolyData *original, vtkPolyData *input) const;
 private: 
 	vtkPlatonicSolidSource *icosahedronSource;
 	vtkLinearSubdivisionFilter *linearSubdivisionFilter;

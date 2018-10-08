@@ -217,19 +217,11 @@ vtkBrainExtractionDecorator::BET_Parameters vtkBrainExtractionDecorator::initial
 	return bp;
 }
 
-void vtkBrainExtractionDecorator::normalsCentroidsNeighbourDistance(vtkPolyData * input, vtkPolyData * output)
+void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyData) const
 {
-	// Compute point normals, which are the means of a points's all cell normals,
-	// point inside to center of closed surface.
-	// The name of the array is "Normal". 
-	// Compute point centroids, which are the means of a point's neighbour points.
-	// The name of the array is "Centroid". 
-	this->polyDataNormalsCentroids->SetInputData(input);
-	this->polyDataNormalsCentroids->Update();
-	vtkPolyData *polyData = this->polyDataNormalsCentroids->GetOutput();
-	polyData->BuildCells();
 	// Compute point neighbour distance, which are the means of a point's distance of neighbour points
 	// The name of the array is "Mean distance"
+	polyData->BuildCells();
 	vtkNew<vtkFloatArray> meanDistance;
 	meanDistance->Allocate(polyData->GetNumberOfPoints());
 	meanDistance->SetNumberOfComponents(1);
@@ -269,5 +261,91 @@ void vtkBrainExtractionDecorator::normalsCentroidsNeighbourDistance(vtkPolyData 
 		}
 	}
 	delete counter;
+}
+
+void vtkBrainExtractionDecorator::normalsCentroidsNeighbourDistance(vtkPolyData * input, vtkPolyData * output)
+{
+	// Compute point normals, which are the means of a points's all cell normals,
+	// point inside to center of closed surface.
+	// The name of the array is "Normal". 
+	// Compute point centroids, which are the means of a point's neighbour points.
+	// The name of the array is "Centroid". 
+	this->polyDataNormalsCentroids->SetInputData(input);
+	this->polyDataNormalsCentroids->Update();
+	vtkPolyData *polyData = this->polyDataNormalsCentroids->GetOutput();
+	this->mediumDistanceOfNeighbours(polyData);
 	output->ShallowCopy(polyData);
+}
+
+const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * original, vtkPolyData * input) const
+{
+	double intersection = 0.0;
+	vtkIdType numPoints_o = original->GetNumberOfPoints();
+	vtkIdType numPoints = input->GetNumberOfPoints();
+	if (numPoints_o != numPoints) {
+		throw std::invalid_argument("The original polydata and the new polydata have different number of poitns. ");
+	}
+	// calculate the mean of medium distance of Neighbours of the original poly data. 
+	this->mediumDistanceOfNeighbours(original);
+	vtkDataArray *originalDistances = original->GetPointData()->GetArray("Mean distance");
+	double mlo = 0.0;
+	for (vtkIdType id = 0; id < numPoints_o; ++id) {
+		mlo += originalDistances->GetTuple1(id);
+	}
+	mlo /= numPoints_o;
+	// calculate the mean of medium distance of Neighbours of the input poly data. 
+	this->mediumDistanceOfNeighbours(input);
+	vtkDataArray *inputDistances = input->GetPointData()->GetArray("Mean distance");
+	double ml = 0.0;
+	for (vtkIdType id = 0; id < numPoints; ++id) {
+		ml += originalDistances->GetTuple1(id);
+	}
+	ml /= numPoints;
+	input->BuildLinks();
+	input->BuildCells();
+	vtkIdType io;
+	vtkIdType i;
+	double pio[3];
+	double pi[3];
+	for (io = 0, i = 0; io < numPoints_o && i < numPoints; ++io, ++i) {
+		original->GetPoint(io, pio);
+		input->GetPoint(i, pi);
+		vtkIdType jo;
+		vtkIdType j;
+		double pjo[3];
+		double pj[3];
+		for (jo = 0, j = 0; jo < numPoints_o && j < numPoints; ++jo, ++j) {
+			original->GetPoint(jo, pjo);
+			input->GetPoint(io, pio);
+			bool found = false;
+			unsigned short ncells;
+			vtkIdType* cells;
+			input->GetPointCells(i, ncells, cells);
+			for (vtkIdType cid = 0; cid < ncells && !found; ++cid) {
+				vtkIdType npts; 
+				vtkIdType* pts;
+				input->GetCellPoints(cid, npts, pts);
+				for (vtkIdType pid = 0; pid < npts && !found; ++pid) {
+					double neighbourOrItself[3];
+					const double TOLERANCE = 1e-8;
+					input->GetPoint(pid, neighbourOrItself);
+					if (fabs(pj[0] - neighbourOrItself[0]) >= TOLERANCE ||
+						fabs(pj[1] - neighbourOrItself[1]) >= TOLERANCE ||
+						fabs(pj[2] - neighbourOrItself[2]) >= TOLERANCE) {
+						found = true;
+					}
+				}
+			}
+			if (!found) {
+				double dist = vtkMath::Distance2BetweenPoints(pi, pj);
+				if (dist < ml * ml) {
+					dist = sqrt(dist) / ml;
+					double disto = vtkMath::Distance2BetweenPoints(pio, pjo);
+					disto = sqrt(disto) / mlo;
+					intersection += (dist - disto) * (dist - disto);
+				}
+			}
+		}
+	}
+	return intersection;
 }
