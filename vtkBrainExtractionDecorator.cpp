@@ -243,15 +243,16 @@ void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyD
 			// current point's neighbour
 			vtkIdType before = (pid == 0 ? numPts - 1 : pid - 1);
 			vtkIdType after = (pid == numPts - 1 ? 0 : pid + 1);
-			counter[pid] += 2;
+			counter[points[pid]] += 2;
 			double beforePts[3];
 			polyData->GetPoint(points[before], beforePts);
 			double afterPts[3];
 			polyData->GetPoint(points[after], afterPts);
 			double currentPts[3];
 			polyData->GetPoint(points[pid], currentPts);
-			meanDistance_f[points[pid]] =
-				std::sqrt(vtkMath::Distance2BetweenPoints(currentPts, beforePts)) +
+			meanDistance_f[points[pid]] +=
+				std::sqrt(vtkMath::Distance2BetweenPoints(currentPts, beforePts));
+			meanDistance_f[points[pid]] +=
 				std::sqrt(vtkMath::Distance2BetweenPoints(currentPts, afterPts));
 		}
 	}

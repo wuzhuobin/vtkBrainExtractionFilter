@@ -31,7 +31,7 @@ vtkBrainExtractionFilter::vtkBrainExtractionFilter()
 	this->SetNumberOfOutputPorts(2);
 	this->Subdivision = 4;
 	this->IterationNumber = 0;
-	this->NumOfIteration = 500;
+	this->NumOfIteration = 1000;
 	this->decorator = new vtkBrainExtractionDecorator;
 }
 
