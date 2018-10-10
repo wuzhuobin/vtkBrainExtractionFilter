@@ -64,8 +64,8 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 		outInfo1->Get(vtkDataObject::DATA_OBJECT()));
 	this->decorator->generateSphere(this->Subdivision, output0);
 	(*this->bp) = this->decorator->initialParameters(input, output0, output0);
+	cerr << *this->bp;
 	this->UpdateProgress(0.1);
-	//vtkBrainExtractionDecorator::normalsCentroidNeighbourDistance(output, output);
 	double fraction_threshold = 0.5;
 	vtkPolyData *originalPolyData = vtkPolyData::New();
 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
@@ -327,9 +327,13 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	u->SetName("u");
 	float *u_f = u->WritePointer(0, 3 * numPoints);
 	polyData->GetPointData()->AddArray(u);
+	double meanMovement = 0;
 	for (vtkIdType id = 0; id < numPoints; ++id) {
 		vtkMath::Add(u1_f + 3 * id, u2_f + 3 * id, u_f + 3 * id);
 		vtkMath::Add(u_f + 3 * id, u3_f + 3 * id, u_f + 3 * id);
 		vtkMath::Add(points_f + 3 * id, u_f + 3 * id, points_f + 3 * id);
+		meanMovement += vtkMath::Norm(u_f + 3 * id);
 	}
+	meanMovement /= numPoints;
+	cerr << "meanMovement" << meanMovement << '\n';
 }

@@ -132,6 +132,7 @@ void vtkBrainExtractionDecorator::generateLabelImage(vtkImageData * image, doubl
 
 vtkImageData * vtkBrainExtractionDecorator::polyDataToImage(vtkPolyData * polyData, vtkImageData * imageData)
 {
+	// poly data to image.
 	this->polyDataToImageStencil->SetInputData(polyData);
 	this->polyDataToImageStencil->SetOutputOrigin(imageData->GetOrigin());
 	this->polyDataToImageStencil->SetOutputSpacing(imageData->GetSpacing());
@@ -181,7 +182,6 @@ BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * ima
 		}
 	}
 	vtkMath::MultiplyScalar(centerOfMass, 1 / counter);
-	//std::copy(centerOfMass, centerOfMass + 3, bp.centerOfMass.begin());
 	memcpy(&bp.com, centerOfMass, sizeof(double) * 3);
 	// using the brain's volume as the sphere's volume
 	// basing on sphere volume equation, find radius.
@@ -189,7 +189,7 @@ BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * ima
 	// volume = 4/3 * PI * radius^3
 	double brainVolume = numIsBrain * spacing[0] * spacing[1] * spacing[2];
 	bp.radius = pow(brainVolume * 0.75 / vtkMath::Pi(), 1.0 / 3.0);
-	// transform
+	// transform, translate to center, scale to radius*0.5
 	vtkSmartPointer<vtkTransform> transform =
 		vtkSmartPointer<vtkTransform>::New();
 	transform->Identity();
@@ -201,19 +201,20 @@ BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * ima
 	transformPolyData->SetTransform(transform);
 	transformPolyData->Update();
 	output->ShallowCopy(transformPolyData->GetOutput());
+	// calculate bp.tm, medium.
 	std::vector<double> voxels;
-	double center[3];
-	memcpy(center, static_cast<void*>(&bp.com), sizeof(bp.com));
 	for (it.Initialize(imageData); !it.IsAtEnd(); it.Next()) {
 		double voxel;
 		void *voidPointer = vtkImagePointIterator::GetVoidPointer(imageData, it.GetId());
-		if (vtkMath::Distance2BetweenPoints(it.GetPosition(), center) >= (bp.radius * bp.radius)) {
+		// execlude the voxel whose position is out of a sphere 
+		if (vtkMath::Distance2BetweenPoints(it.GetPosition(), centerOfMass) >= (bp.radius * bp.radius)) {
 			continue;
 		}
 		switch (imageData->GetScalarType())
 		{
 			vtkTemplateMacro(voxel = *static_cast<VTK_TT*>(voidPointer));
 		}
+		// execlude the value out of range (bp.t2, bp.t98)
 		if (voxel <= bp.t2 || bp.t98 <= voxel) {
 			continue;
 		}
@@ -239,6 +240,7 @@ void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyD
 	polyData->GetPointData()->AddArray(meanDistance.Get());
 	float *meanDistance_f = reinterpret_cast<float*>(meanDistance->GetVoidPointer(0));
 	vtkIdType *counter = new vtkIdType[polyData->GetNumberOfPoints()]();
+	// Looping with cells, event points are duplicated, the counter can solve.
 	for (vtkIdType cid = 0; cid < polyData->GetNumberOfCells(); ++cid) {
 		vtkCell *cell = polyData->GetCell(cid);
 		vtkIdType numPts;
@@ -248,7 +250,8 @@ void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyD
 			continue;
 		}
 		for (vtkIdType pid = 0; pid < numPts; ++pid) {
-			// current point's neighbour
+			// current point's neighbour, since points in a cell should be in order, 
+			// points' neighbours should be their preorder and postorder. 
 			vtkIdType before = (pid == 0 ? numPts - 1 : pid - 1);
 			vtkIdType after = (pid == numPts - 1 ? 0 : pid + 1);
 			counter[points[pid]] += 2;
@@ -281,8 +284,7 @@ void vtkBrainExtractionDecorator::normalsCentroids(vtkPolyData * input, vtkPolyD
 	// The name of the array is "Centroid". 
 	this->polyDataNormalsCentroids->SetInputData(input);
 	this->polyDataNormalsCentroids->Update();
-	vtkPolyData *polyData = this->polyDataNormalsCentroids->GetOutput();
-	output->ShallowCopy(polyData);
+	output->ShallowCopy(this->polyDataNormalsCentroids->GetOutput());
 }
 
 const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * original, vtkPolyData * input) const
