@@ -8,6 +8,7 @@
 class vtkImageData;
 class vtkPolyData;
 class vtkBrainExtractionDecorator;
+struct BET_Parameters;
 class vtkBrainExtractionFilter : public vtkPolyDataAlgorithm
 {
 public:
@@ -16,6 +17,19 @@ public:
 	virtual void PrintSelf(ostream &os, vtkIndent indent) override;
 	vtkImageData* GetOutputImage();
 	vtkAlgorithmOutput* GetOutputPortImage();
+	
+	vtkGetMacro(Subdivision, int);
+	vtkSetClampMacro(Subdivision, int, 0, 20);
+
+	vtkGetMacro(NumOfIteration, int);
+	vtkSetClampMacro(NumOfIteration, int, 0, VTK_INT_MAX);
+
+	vtkGetMacro(IterationNumber, int);
+
+	vtkGetMacro(SmoothArg, double);
+	vtkSetMacro(SmoothArg, double);
+
+	vtkGetVector3Macro(BrainCenter, double);
 protected:
 	vtkBrainExtractionFilter();
 	virtual ~vtkBrainExtractionFilter() override;
@@ -30,22 +44,21 @@ protected:
 		const int pass,
 		const double &smoothArg,
 		const double &increaseSmoothing,
-		const double &betMainParameter,
-		const double &t98,
-		const double &t2,
-		const double &t,
-		const double &tm);
+		const double &betMainParameter);
 //////////////////////////////////////// Parameter ////////////////////////////////////////
 	int Subdivision;
 	int NumOfIteration;
 	int IterationNumber;
+	double SmoothArg;
 	double BrainCenter[3];
-	vtkBrainExtractionDecorator *decorator;
+	double InHomogeneityDirection[3];
 private:
 	vtkBrainExtractionFilter(const vtkBrainExtractionFilter&) VTK_DELETE_FUNCTION;
 	vtkBrainExtractionFilter(vtkBrainExtractionFilter&&) VTK_DELETE_FUNCTION;
 	void operator=(const vtkBrainExtractionFilter&) VTK_DELETE_FUNCTION;
 	void operator=(vtkBrainExtractionFilter&&) VTK_DELETE_FUNCTION;
+	vtkBrainExtractionDecorator *decorator;
+	BET_Parameters *bp;
 };
 
 #endif // !__VTK_BRAIN_EXTRACTION_FILTER_H__

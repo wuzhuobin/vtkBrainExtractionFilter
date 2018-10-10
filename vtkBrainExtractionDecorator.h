@@ -10,39 +10,47 @@ class vtkPolyData;
 class vtkImageData;
 // std
 #include <ostream>
+/**
+* @struct	BET_Parameters
+* @brief	Brain Extraction Tool Parameters
+* @author	WUZHUOBIN
+*
+* The Bet Parameters struct is using Plain Old Data(POD), following rules for standard-layout and
+* trivial.
+*/
+struct BET_Parameters {
+	double min;					///< The minimum intensity of the image.
+	double max;					///< The maximum intensity of the image.
+	double t98;					///< Caculated by looking at the intensity histogram, intensity above 98%.
+	double t2;					///< Caculated by looking at the intensity histogram, intensity below 2%.
+	double t;					///< Attemptes to distinguish between brain matter and background, 10% between #t2 and #t98.
+	double tm;					///< The median intensity of all points with a sphere of the estimated #centerOfMass and #radius.
+	double radius;				///< The estimated raduis of the sphere.
+	struct {
+		double x;
+		double y;
+		double z;
+	} com;						 ///< The estimated center of the sphere. The memory layout just like an array. 
+};
+/**
+* @fn				std::ostream& operator<<(std::ostream &os, BET_Parameters &bp)
+* @brief			Serializing output of BET_Parameters
+* @param[in]		os The std::ostream.
+* @param[in]		bp The BET_Parameters need to be print.
+* @return			The input std::ostream
+*/
+std::ostream& operator<<(std::ostream &os, BET_Parameters &bp);
 class vtkBrainExtractionDecorator
 {
 public:
 	vtkBrainExtractionDecorator();
 	~vtkBrainExtractionDecorator();
-	/**
-	* @struct	BET_Parameters
-	* @brief	Brain Extraction Tool Parameters
-	* @author	WUZHUOBIN
-	*
-	* The Bet Parameters struct is using Plain Old Data(POD), following rules for standard-layout and
-	* trivial.
-	*/
-	struct BET_Parameters {
-		double min;					///< The minimum intensity of the image.
-		double max;					///< The maximum intensity of the image.
-		double t98;					///< Caculated by looking at the intensity histogram, intensity above 98%.
-		double t2;					///< Caculated by looking at the intensity histogram, intensity below 2%.
-		double t;					///< Attemptes to distinguish between brain matter and background, 10% between #t2 and #t98.
-		double tm;					///< The median intensity of all points with a sphere of the estimated #centerOfMass and #radius.
-		double radius;				///< The estimated raduis of the sphere.
-		struct {
-			double x;
-			double y;
-			double z;
-		} com;						 ///< The estimated center of the sphere. The memory layout just like an array. 
-	};
 	void generateSphere(const int &subdivision, vtkPolyData *data);
 	void generateLabelImage(vtkImageData *image, double label = 1.0);
 	vtkImageData* polyDataToImage(vtkPolyData* polyData, vtkImageData *imageData);
 	BET_Parameters initialParameters(vtkImageData *imageData, vtkPolyData *polyData, vtkPolyData *output);
 	void mediumDistanceOfNeighbours(vtkPolyData *polyData) const;
-	void normalsCentroidsNeighbourDistance(vtkPolyData *input, vtkPolyData *output);
+	void normalsCentroids(vtkPolyData *input, vtkPolyData *output);
 	const double selfIntersection(vtkPolyData *original, vtkPolyData *input) const;
 private: 
 	vtkPlatonicSolidSource *icosahedronSource;
@@ -56,14 +64,6 @@ private:
 	vtkBrainExtractionDecorator& operator=(const vtkBrainExtractionDecorator &) = delete;
 	vtkBrainExtractionDecorator& operator=(vtkBrainExtractionDecorator&&) = delete;
 };
-/**
-* @fn				std::ostream& operator<<(std::ostream &os, BET_Parameters &bp)
-* @brief			Serializing output of BET_Parameters
-* @param[in]		os The std::ostream.
-* @param[in]		bp The BET_Parameters need to be print.
-* @return			The input std::ostream
-*/
-std::ostream& operator<<(std::ostream &os, vtkBrainExtractionDecorator::BET_Parameters &bp);
 
 //void binaryImageDataSource(
 //	vtkImageData *image,

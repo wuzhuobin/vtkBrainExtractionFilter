@@ -12,12 +12,12 @@
 #include <vtkImagePointIterator.h>
 #include <vtkTransform.h>
 #include <vtkTransformPolyDataFilter.h>
-#include <vtkImageThreshold.h>
 #include <vtkPolyDataToImageStencil.h>
 #include <vtkCellData.h>
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkImageIterator.h>
+#include <vtkImagePointDataIterator.h>
 // std
 #include <ostream>
 /**
@@ -38,7 +38,7 @@ static void generateSphereInternal(vtkIterator *it) {
 	}
 }
 
-std::ostream& operator<<(std::ostream &os, vtkBrainExtractionDecorator::BET_Parameters &bp)
+std::ostream& operator<<(std::ostream &os, BET_Parameters &bp)
 {
 	os << "\t\t\t" << '\n';
 	os << "\t\t\t" << "BET Parameters" << '\n';
@@ -143,13 +143,14 @@ vtkImageData * vtkBrainExtractionDecorator::polyDataToImage(vtkPolyData * polyDa
 	return this->imageStencil->GetOutput();
 }
 
-vtkBrainExtractionDecorator::BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * imageData, vtkPolyData * polyData, vtkPolyData * output)
+BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * imageData, vtkPolyData * polyData, vtkPolyData * output)
 {
 	BET_Parameters bp;
 	// calculate bp.max, bp.min, bp.t, bp.t2, bp.t98;
 	vtkNew<vtkImageHistogramStatistics> imageHistogram;
 	imageHistogram->SetInputData(imageData);
 	imageHistogram->SetAutoRangePercentiles(2, 98);
+	imageHistogram->SetAutoRangeExpansionFactors(0, 0);
 	imageHistogram->SetGenerateHistogramImage(false);
 	imageHistogram->Update();
 	imageHistogram->GetAutoRange(bp.t2, bp.t98);
@@ -200,20 +201,27 @@ vtkBrainExtractionDecorator::BET_Parameters vtkBrainExtractionDecorator::initial
 	transformPolyData->SetTransform(transform);
 	transformPolyData->Update();
 	output->ShallowCopy(transformPolyData->GetOutput());
-	vtkSmartPointer<vtkImageThreshold> imageThreshold =
-		vtkSmartPointer<vtkImageThreshold>::New();
-	imageThreshold->SetInputData(imageData);
-	imageThreshold->ThresholdBetween(bp.t2, bp.t98);
-	imageThreshold->SetOutValue(0);
-	imageThreshold->Update();
-	this->polyDataToImage(transformPolyData->GetOutput(), imageThreshold->GetOutput());
-	vtkSmartPointer<vtkImageHistogramStatistics> imageHistogram2 =
-		vtkSmartPointer<vtkImageHistogramStatistics>::New();
-	imageHistogram2->SetInputConnection(this->imageStencil->GetOutputPort());
-	imageHistogram2->SetStencilConnection(this->polyDataToImageStencil->GetOutputPort());
-	imageHistogram2->SetGenerateHistogramImage(false);
-	imageHistogram2->Update();
-	bp.tm = imageHistogram2->GetMedian();
+	std::vector<double> voxels;
+	double center[3];
+	memcpy(center, static_cast<void*>(&bp.com), sizeof(bp.com));
+	for (it.Initialize(imageData); !it.IsAtEnd(); it.Next()) {
+		double voxel;
+		void *voidPointer = vtkImagePointIterator::GetVoidPointer(imageData, it.GetId());
+		if (vtkMath::Distance2BetweenPoints(it.GetPosition(), center) >= (bp.radius * bp.radius)) {
+			continue;
+		}
+		switch (imageData->GetScalarType())
+		{
+			vtkTemplateMacro(voxel = *static_cast<VTK_TT*>(voidPointer));
+		}
+		if (voxel <= bp.t2 || bp.t98 <= voxel) {
+			continue;
+		}
+		voxels.push_back(voxel);
+	}
+	// find medium;
+	std::nth_element(voxels.begin(), voxels.begin() + floor(voxels.size() * 0.5) - 1, voxels.end());
+	bp.tm = voxels[floor(voxels.size() * 0.5) - 1];
 	return bp;
 }
 
@@ -264,7 +272,7 @@ void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyD
 	delete counter;
 }
 
-void vtkBrainExtractionDecorator::normalsCentroidsNeighbourDistance(vtkPolyData * input, vtkPolyData * output)
+void vtkBrainExtractionDecorator::normalsCentroids(vtkPolyData * input, vtkPolyData * output)
 {
 	// Compute point normals, which are the means of a points's all cell normals,
 	// point inside to center of closed surface.
@@ -274,7 +282,6 @@ void vtkBrainExtractionDecorator::normalsCentroidsNeighbourDistance(vtkPolyData 
 	this->polyDataNormalsCentroids->SetInputData(input);
 	this->polyDataNormalsCentroids->Update();
 	vtkPolyData *polyData = this->polyDataNormalsCentroids->GetOutput();
-	this->mediumDistanceOfNeighbours(polyData);
 	output->ShallowCopy(polyData);
 }
 

@@ -30,14 +30,23 @@ vtkBrainExtractionFilter::vtkBrainExtractionFilter()
 {
 	this->SetNumberOfOutputPorts(2);
 	this->Subdivision = 4;
-	this->IterationNumber = 0;
 	this->NumOfIteration = 1000;
+	this->IterationNumber = 0;
+	this->SmoothArg = 1.0;
+	this->BrainCenter[0] = 0;
+	this->BrainCenter[1] = 0;
+	this->BrainCenter[2] = 0;
+	this->InHomogeneityDirection[0] = 0;
+	this->InHomogeneityDirection[1] = 0;
+	this->InHomogeneityDirection[2] = 0;
 	this->decorator = new vtkBrainExtractionDecorator;
+	this->bp = new BET_Parameters;
 }
 
 vtkBrainExtractionFilter::~vtkBrainExtractionFilter()
 {
 	delete this->decorator;
+	delete this->bp;
 }
 
 int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), vtkInformationVector ** inputVector, vtkInformationVector * outputVector)
@@ -54,16 +63,22 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 	vtkImageData *output1 = vtkImageData::SafeDownCast(
 		outInfo1->Get(vtkDataObject::DATA_OBJECT()));
 	this->decorator->generateSphere(this->Subdivision, output0);
-	vtkBrainExtractionDecorator::BET_Parameters bp = this->decorator->initialParameters(input, output0, output0);
-	std::cerr << bp;
+	(*this->bp) = this->decorator->initialParameters(input, output0, output0);
+	this->UpdateProgress(0.1);
 	//vtkBrainExtractionDecorator::normalsCentroidNeighbourDistance(output, output);
 	double fraction_threshold = 0.5;
 	vtkPolyData *originalPolyData = vtkPolyData::New();
 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
-		vtkBrainExtractionFilter::StepOfComputation(input, output0, 0, 1.0, 0, pow(fraction_threshold, 0.275), bp.t98, bp.t2, bp.t, bp.tm);
-		std::cerr << "Interation Number: " << this->IterationNumber << '\n';
+		vtkBrainExtractionFilter::StepOfComputation(
+			input,
+			output0,
+			0,
+			this->SmoothArg,
+			0,
+			pow(fraction_threshold, 0.275));
+			//0.5);
+		this->UpdateProgress(0.1 + 0.6 * this->IterationNumber / this->NumOfIteration);
 	}
-	
 	originalPolyData->Delete();
 	output1->DeepCopy(input);
 	this->decorator->generateLabelImage(output1);
@@ -99,13 +114,10 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	const int pass,
 	const double &smoothArg,
 	const double & increaseSmoothing,
-	const double & bt,
-	const double & t98, 
-	const double & t2, 
-	const double & t, 
-	const double & tm)
+	const double & bt)
 {	
-	this->decorator->normalsCentroidsNeighbourDistance(polyData, polyData);
+	this->decorator->normalsCentroids(polyData, polyData);
+	this->decorator->mediumDistanceOfNeighbours(polyData);
 	vtkIdType numPoints = polyData->GetNumberOfPoints();
 	vtkDataArray *points = polyData->GetPoints()->GetData();
 	vtkDataArray *normals = polyData->GetPointData()->GetArray("Normals");
@@ -122,7 +134,6 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	}
 	l /= meanDistance->GetNumberOfValues();
 //////////////////////////////////////// s, st, sn ////////////////////////////////////////
-	//std::cerr  << "s, st, sn\n";
 	vtkSmartPointer<vtkFloatArray> s =
 		vtkSmartPointer<vtkFloatArray>::New();
 	s->SetNumberOfComponents(3);
@@ -149,7 +160,6 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		vtkMath::Subtract(s_f + 3 * id, sn_f + 3 * id, st_f + 3 * id);
 	}
 //////////////////////////////////////// u1 ////////////////////////////////////////
-	//std::cerr  << "u1\n";
 	constexpr float f1 = 0.5f;
 	vtkSmartPointer<vtkFloatArray> u1 =
 		vtkSmartPointer<vtkFloatArray>::New();
@@ -162,27 +172,23 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		vtkMath::MultiplyScalar(u1_f + id * 3, f1);
 	}	
 //////////////////////////////////////// u2 ////////////////////////////////////////
-		//std::cerr  << "u2\n";
-		//const int pass = 0;
 	const double rmin = 3.33 * smoothArg;
 	const double rmax = 10 * smoothArg;
 	const double E = (1 / rmin + 1 / rmax) / 2.;
 	const double F = 6. / (1 / rmin - 1 / rmax);
 	vtkSmartPointer<vtkFloatArray> u2 =
 		vtkSmartPointer<vtkFloatArray>::New();
-	u2->Allocate(3 * numPoints);
 	u2->SetNumberOfComponents(3);
-	u2->SetNumberOfTuples(numPoints);
 	u2->SetName("u2");
-	polyData->GetPointData()->AddArray(u2);
 	float *u2_f = u2->WritePointer(0, 3 * numPoints);
+	polyData->GetPointData()->AddArray(u2);
 	memcpy(u2_f, sn_f, 3 * numPoints * sizeof(float));
 	for (vtkIdType id = 0; id < numPoints; ++id) {
 		// @todo
 		// calculation in source code
 		//  rinv = (2 * fabs(sn|n))/(l*l);
 		// means: 
-		// r = l^2 / (2 * sqqrt(norm(sn)))
+		// r = l^2 / (2 * sqrt(norm(sn)))
 		// calculation in paper
 		// r = l^2 / (2 * norm(sn))
 		// paper's way is the following: 
@@ -199,12 +205,6 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		vtkMath::MultiplyScalar(u2_f + 3 * id, f2);
 	}
 	//////////////////////////////////////// u3 ////////////////////////////////////////
-	//std::cerr  << "u3\n";
-	// main term of bet. 
-	//if (bt != 0.0)
-	//{
-	//	bt = Min(1., Max(0., bet_main_parameter + local_th*((*i)->get_coord().Z - zcog) / radius));
-	//}
 	// @todo 
 	// in paper d1 = 20mm, d2 = d1 / 2 ;
 	// paper's way is the following: 
@@ -231,91 +231,96 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		// @todo 
 		// calculate in paper Imin = MAX(t2, MIN(tm, I(0), I(1), ..., I(d1))), Imax = MIN(tm, MAX(t, I(0), I(1), ...I(d2)))
 		// papaer's code is the following: 
-		float Imin = tm;
-		float Imax = t;
-		for (float step = 0; step < d1; ++step) {
-			float p[3];
-			float n[3];
-			memcpy(n, normals_f + 3 * id, sizeof(float) * 3);
-			vtkMath::MultiplyScalar(n, step);
-			vtkMath::Subtract(points_f + 3 * id, n, p);
-			int ijk[3];
-			ijk[0] = vtkMath::Round((p[0] - origin[0]) / spacing[0]);
-			ijk[1] = vtkMath::Round((p[1] - origin[1]) / spacing[1]);
-			ijk[2] = vtkMath::Round((p[2] - origin[2]) / spacing[2]);
-			if (extent[0] <= ijk[0] && ijk[0] <= extent[1] &&
-				extent[2] <= ijk[1] && ijk[1] <= extent[3] &&
-				extent[4] <= ijk[2] && ijk[2] <= extent[5]) {
-				float im = data->GetScalarComponentAsFloat(ijk[0], ijk[1], ijk[2], 0);
-				Imin = vtkMath::Min(Imin, im);
-				if (step < d2) {
-					Imax = vtkMath::Max(Imax, im);
-				}
-			}
-		}
-		Imin = vtkMath::Max((float)t2, Imin);
-		Imax = vtkMath::Min((float)tm, Imax);
-		const float tl = (Imax - t2) * bt + t2;
-		float f3 = 2 * (Imin - tl) / (Imax - t2);
-		f3 *= (normal_max_update_fraction * lambda_fit * l);
-		vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
-		// source code is the following: 
 		//float Imin = tm;
 		//float Imax = t;
-		//float f3 = 0;
-		//float p[3];
-		//vtkMath::Subtract(points_f + 3 * id, normals_f + 3 * id, p);
-		//float iv = vtkMath::Round((p[0] - origin[0]) / spacing[0]);
-		//float jv = vtkMath::Round((p[1] - origin[1]) / spacing[1]);
-		//float kv = vtkMath::Round((p[2] - origin[2]) / spacing[2]);
-		//if (extent[0] <= (int)iv && (int)iv <= extent[1] &&
-		//	extent[2] <= (int)jv && (int)jv <= extent[3] &&
-		//	extent[4] <= (int)kv && (int)kv <= extent[5]) {
-		//	float im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
-		//	Imin = vtkMath::Min(Imin, im);
-		//	Imax = vtkMath::Max(Imax, im);
-		//	float nxv = normals_f[id * 3 + 0] / spacing[0];
-		//	float nyv = normals_f[id * 3 + 1] / spacing[1];
-		//	float nzv = normals_f[id * 3 + 2] / spacing[2];
-		//	int i2 = iv - (d1 - 1)*nxv;
-		//	int j2 = jv - (d1 - 1)*nyv;
-		//	int k2 = kv - (d1 - 1)*nzv;
-		//	if (extent[0] <= i2 && i2 <= extent[1] &&
-		//		extent[2] <= j2 && j2 <= extent[3] &&
-		//		extent[4] <= k2 && k2 <= extent[5]) {
-		//		im = data->GetScalarComponentAsFloat(i2, j2, k2, 0);
+		//for (float step = 0; step < d1; ++step) {
+		//	float p[3];
+		//	float n[3];
+		//	memcpy(n, normals_f + 3 * id, sizeof(float) * 3);
+		//	vtkMath::MultiplyScalar(n, step);
+		//	vtkMath::Subtract(points_f + 3 * id, n, p);
+		//	int ijk[3];
+		//	ijk[0] = vtkMath::Round((p[0] - origin[0]) / spacing[0]);
+		//	ijk[1] = vtkMath::Round((p[1] - origin[1]) / spacing[1]);
+		//	ijk[2] = vtkMath::Round((p[2] - origin[2]) / spacing[2]);
+		//	if (extent[0] <= ijk[0] && ijk[0] <= extent[1] &&
+		//		extent[2] <= ijk[1] && ijk[1] <= extent[3] &&
+		//		extent[4] <= ijk[2] && ijk[2] <= extent[5]) {
+		//		float im = data->GetScalarComponentAsFloat(ijk[0], ijk[1], ijk[2], 0);
 		//		Imin = vtkMath::Min(Imin, im);
-		//		nxv *= dscale;
-		//		nyv *= dscale;
-		//		nzv *= dscale;
-		//		for (double gi = 2.0; gi < d1; gi += dscale)
-		//		{
-		//			iv -= nxv; jv -= nyv; kv -= nzv;
-		//			im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
-		//			Imin = vtkMath::Min(Imin, im);
-
-		//			if (gi < d2) {
-		//				Imax = vtkMath::Max(Imax, im);
-		//			}
-		//		}
-
-		//		Imin = vtkMath::Max((float)t2, Imin);
-		//		Imax = vtkMath::Min((float)tm, Imax);
-
-		//		const float tl = (Imax - t2) * bt + t2;
-		//		if (Imax - t2 > 0) {
-		//			f3 = 2 * (Imin - tl) / (Imax - t2);
-		//		}
-		//		else {
-		//			f3 = (Imin - tl) * 2;
+		//		if (step < d2) {
+		//			Imax = vtkMath::Max(Imax, im);
 		//		}
 		//	}
 		//}
+		//Imin = vtkMath::Max((float)t2, Imin);
+		//Imax = vtkMath::Min((float)tm, Imax);
+		//const float tl = (Imax - t2) * bt + t2;
+		//float f3 = 2 * (Imin - tl) / (Imax - t2);
 		//f3 *= (normal_max_update_fraction * lambda_fit * l);
 		//vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
+		// source code is the following: 
+		float Imin = this->bp->tm;
+		float Imax = this->bp->t;
+		float f3 = 0;
+		float p[3];
+		vtkMath::Subtract(points_f + 3 * id, normals_f + 3 * id, p);
+		float iv = (p[0] - origin[0]) / spacing[0];
+		float jv = (p[1] - origin[1]) / spacing[1];
+		float kv = (p[2] - origin[2]) / spacing[2];
+		if (extent[0] <= vtkMath::Round(iv) && vtkMath::Round(iv) <= extent[1] &&
+			extent[2] <= vtkMath::Round(jv) && vtkMath::Round(jv) <= extent[3] &&
+			extent[4] <= vtkMath::Round(kv) && vtkMath::Round(kv) <= extent[5]) {
+			float im = data->GetScalarComponentAsFloat(iv, jv, kv, 0);
+			Imin = vtkMath::Min(Imin, im);
+			Imax = vtkMath::Max(Imax, im);
+			float nxv = normals_f[id * 3 + 0] / spacing[0];
+			float nyv = normals_f[id * 3 + 1] / spacing[1];
+			float nzv = normals_f[id * 3 + 2] / spacing[2];
+			int i2 = vtkMath::Round(iv - (d1 - 1)*nxv);
+			int j2 = vtkMath::Round(jv - (d1 - 1)*nyv);
+			int k2 = vtkMath::Round(kv - (d1 - 1)*nzv);
+			if (extent[0] <= i2 && i2 <= extent[1] &&
+				extent[2] <= j2 && j2 <= extent[3] &&
+				extent[4] <= k2 && k2 <= extent[5]) {
+				im = data->GetScalarComponentAsFloat(i2, j2, k2, 0);
+				Imin = vtkMath::Min(Imin, im);
+				nxv *= dscale;
+				nyv *= dscale;
+				nzv *= dscale;
+				for (double gi = 2.0; gi < d1; gi += dscale)
+				{
+					iv -= nxv; jv -= nyv; kv -= nzv;
+					im = data->GetScalarComponentAsFloat(vtkMath::Round(iv), vtkMath::Round(jv), vtkMath::Round(kv), 0);
+					Imin = vtkMath::Min(Imin, im);
+					if (gi < d2) {
+						Imax = vtkMath::Max(Imax, im);
+					}
+				}
+				Imin = vtkMath::Max((float)(this->bp->t2), Imin);
+				Imax = vtkMath::Min((float)(this->bp->tm), Imax);
+				// main term of bet. 
+				double _bt = bt;
+				if (vtkMath::Norm(this->InHomogeneityDirection) != 0.0) {
+					//bt = Min(1., Max(0., bet_main_parameter + local_th*((*i)->get_coord().Z - zcog) / radius));
+					float offsetFromCenter[3];
+					float center[3]{ this->bp->com.x, this->bp->com.y, this->bp->com.z };
+					vtkMath::Subtract(points_f + 3 * id, center, offsetFromCenter);
+					_bt = vtkMath::Min(1.0, vtkMath::Max(0.0, bt + vtkMath::Dot(offsetFromCenter, center) / this->bp->radius));
+				}
+				const float tl = (Imax - this->bp->t2) * _bt + this->bp->t2;
+				if (Imax - this->bp->t2 > 0) {
+					f3 = 2 * (Imin - tl) / (Imax - this->bp->t2);
+				}
+				else {
+					f3 = (Imin - tl) * 2;
+				}
+			}
+		}
+		f3 *= (normal_max_update_fraction * lambda_fit * l);
+		vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
 	}
 	//////////////////////////////////////// u ////////////////////////////////////////
-	//std::cerr  << "u\n";
 	vtkSmartPointer<vtkFloatArray> u =
 		vtkSmartPointer<vtkFloatArray>::New();
 	u->SetNumberOfComponents(3);
