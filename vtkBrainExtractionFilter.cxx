@@ -197,7 +197,8 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		float r_inv = (2 * fabs(vtkMath::Dot(sn_f + id * 3, normals_f + id * 3))) / (l * l);
 		float f2 = (1 + tanh(F*(r_inv - E)))*0.5;
 		if (pass > 0) {
-			if (vtkMath::Dot(s_f + 3 * id, normals_f + 3 * id) > 0) {
+			float tmp = vtkMath::Dot(s_f + 3 * id, normals_f + 3 * id);
+			if (tmp > 0) {
 				f2 *= increaseSmoothing;
 				f2 = vtkMath::Min(f2, 1.0f);
 			}
@@ -215,7 +216,6 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	const int d2 = 3;
 	const float normal_max_update_fraction = 0.5f;
 	const float lambda_fit = 0.1;
-	const double *bounds = data->GetBounds();
 	const double *origin = data->GetOrigin();
 	const double *spacing = data->GetSpacing();
 	const int *extent = data->GetExtent();
@@ -228,11 +228,11 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	memcpy(u3_f, normals_f, 3 * numPoints * sizeof(float));
 	double dscale = vtkMath::Min(vtkMath::Min(vtkMath::Min(1.0, spacing[0]), spacing[1]), spacing[2]);
 	for (vtkIdType id = 0; id < numPoints; ++id) {
+		float Imin = this->bp->tm;
+		float Imax = this->bp->t;
 		// @todo 
 		// calculate in paper Imin = MAX(t2, MIN(tm, I(0), I(1), ..., I(d1))), Imax = MIN(tm, MAX(t, I(0), I(1), ...I(d2)))
 		// papaer's code is the following: 
-		//float Imin = tm;
-		//float Imax = t;
 		//for (float step = 0; step < d1; ++step) {
 		//	float p[3];
 		//	float n[3];
@@ -253,15 +253,13 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		//		}
 		//	}
 		//}
-		//Imin = vtkMath::Max((float)t2, Imin);
-		//Imax = vtkMath::Min((float)tm, Imax);
-		//const float tl = (Imax - t2) * bt + t2;
-		//float f3 = 2 * (Imin - tl) / (Imax - t2);
+		//Imin = vtkMath::Max((float)this->bp->t2, Imin);
+		//Imax = vtkMath::Min((float)this->bp->tm, Imax);
+		//const float tl = (Imax - this->bp->t2) * bt + this->bp->t2;
+		//float f3 = 2 * (Imin - tl) / (Imax - this->bp->t2);
 		//f3 *= (normal_max_update_fraction * lambda_fit * l);
 		//vtkMath::MultiplyScalar(u3_f + 3 * id, f3);
 		// source code is the following: 
-		float Imin = this->bp->tm;
-		float Imax = this->bp->t;
 		float f3 = 0;
 		float p[3];
 		vtkMath::Subtract(points_f + 3 * id, normals_f + 3 * id, p);
@@ -335,5 +333,5 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		meanMovement += vtkMath::Norm(u_f + 3 * id);
 	}
 	meanMovement /= numPoints;
-	cerr << "meanMovement" << meanMovement << '\n';
+	//cerr << "meanMovement" << meanMovement << '\n';
 }

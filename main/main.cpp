@@ -21,7 +21,8 @@ int main(int argc, char **argv)
 	progress->SetCallback([](vtkObject *caller, unsigned long eid,
                                      void *clientdata, void *calldata) {
 		vtkBrainExtractionFilter *bef = reinterpret_cast<vtkBrainExtractionFilter*>(caller);
-		vtkWarningWithObjectMacro(bef, << "Progress: " << bef->GetProgress() << '.');
+		//vtkWarningWithObjectMacro(bef, << "Progress: " << bef->GetProgress() << '.');
+		cerr << "Progress: " << bef->GetProgress() << '.' << '\n';
 	});
 
 	vtkSmartPointer<vtkBrainExtractionFilter> bef =
