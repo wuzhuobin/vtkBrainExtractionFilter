@@ -46,6 +46,8 @@ protected:
 		const double &increaseSmoothing,
 		const double &betMainParameter);
 //////////////////////////////////////// Parameter ////////////////////////////////////////
+	static const int d1 = 7;				///< How far into the brain the minimum intensity is searched for. In parper, d1 = 20mm.
+	static const int d2 = 3;				///< How far into the brain the minimum intensity is searched for. In paper, d2 = d1/2.
 	int Subdivision;
 	int NumOfIteration;
 	int IterationNumber;

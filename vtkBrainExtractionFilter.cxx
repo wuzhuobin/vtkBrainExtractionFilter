@@ -206,14 +206,6 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		vtkMath::MultiplyScalar(u2_f + 3 * id, f2);
 	}
 	//////////////////////////////////////// u3 ////////////////////////////////////////
-	// @todo 
-	// in paper d1 = 20mm, d2 = d1 / 2 ;
-	// paper's way is the following: 
-	//const int d1 = 20;
-	//const int d2 = d1 / 2;
-	// source code is the following: 
-	const int d1 = 7;
-	const int d2 = 3;
 	const float normal_max_update_fraction = 0.5f;
 	const float lambda_fit = 0.1;
 	const double *origin = data->GetOrigin();
@@ -299,13 +291,25 @@ void vtkBrainExtractionFilter::StepOfComputation(
 				Imax = vtkMath::Min((float)(this->bp->tm), Imax);
 				// main term of bet. 
 				double _bt = bt;
+				// @todo
+				// In paper, author assumed there was very strong vertical intensity homogeneity, case bt to
+				// vary lineary with the Z direction.
+				// However, I consider that DICOM images have different directions, homogeneity can be in any direction as well. 
+				// If there is very strong intensity homogeneity, cause bt to vary lineary with a direction. 
+				// In the paper and the source code, only Z direction was considered. The following: 
+				//bt = Min(1., Max(0., bet_main_parameter + local_th*((*i)->get_coord().Z - zcog) / radius));
+				//this->InHomogeneityDirection[0] = this->InHomogeneityDirection[1] = 0;
+				// So I provide the following: 
 				if (vtkMath::Norm(this->InHomogeneityDirection) != 0.0) {
-					//bt = Min(1., Max(0., bet_main_parameter + local_th*((*i)->get_coord().Z - zcog) / radius));
 					float offsetFromCenter[3];
-					float center[3]{ this->bp->com.x, this->bp->com.y, this->bp->com.z };
+					float center[3]{ 
+						(float)this->bp->com.x, 
+						(float)this->bp->com.y, 
+						(float)this->bp->com.z };
 					vtkMath::Subtract(points_f + 3 * id, center, offsetFromCenter);
 					_bt = vtkMath::Min(1.0, vtkMath::Max(0.0, bt + vtkMath::Dot(offsetFromCenter, center) / this->bp->radius));
 				}
+				// tl, a locally appropriate intensity threshold that distinguishes between brain and background. 
 				const float tl = (Imax - this->bp->t2) * _bt + this->bp->t2;
 				if (Imax - this->bp->t2 > 0) {
 					f3 = 2 * (Imin - tl) / (Imax - this->bp->t2);
@@ -333,5 +337,4 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		meanMovement += vtkMath::Norm(u_f + 3 * id);
 	}
 	meanMovement /= numPoints;
-	//cerr << "meanMovement" << meanMovement << '\n';
 }
