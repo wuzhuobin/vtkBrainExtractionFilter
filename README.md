@@ -1,8 +1,5 @@
-vtkBrainExtractionFilter
-
-vtkBrainExtractionFilter
-========================
+# vtkBrainExtractionFilter
 
 vtk Implementation of FSL Brain Extraction Tool  
 Samples:  
-![mesh](mesh.png) ![image](image.png)
+![mesh](README/mesh.png) ![image](README/image.png)
