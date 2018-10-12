@@ -1,5 +1,28 @@
+/**
+ * @file    	vtkBrainExtractionDecorator.h
+ * @language    C++
+ * @author  	WUZHUOBIN jiejin2022@163.com
+ * @since  		Oct.13.2018
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			This program is distributed in the hope that it will be useful, but	 *
+ *			WITHOUT ANY WARRANTY; without even the implied warranty of			 * 
+ *			MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.				 * 
+ *			See the LICENSE for more detail.									 * 
+ *			Copyright (c) WUZHUOBIN. All rights reserved.						 * 
+ *			See COPYRIGHT for more detail.										 * 
+ *			This software is distributed WITHOUT ANY WARRANTY; without even		 * 
+ *			the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR	 * 
+ *			PURPOSE.  See the above copyright notice for more information.		 *
+ *			Internal usage only, without the permission of the author, please DO *
+ *			NOT publish and distribute without the author's permission.  	     *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *  
+ * 
+ */
 #ifndef __VTK_BRAIN_EXTRACTION_DECORATOR_H__
 #define __VTK_BRAIN_EXTRACTION_DECORATOR_H__
+#pragma once
 // vtk
 class vtkPlatonicSolidSource;
 class vtkLinearSubdivisionFilter;
@@ -40,6 +63,13 @@ struct BET_Parameters {
 * @return			The input std::ostream
 */
 std::ostream& operator<<(std::ostream &os, BET_Parameters &bp);
+/**
+ * @class 	vtkBrainExtractionDecorator
+ * @brief   A decorator class for vtkBrainExtractionFilter.
+ * @author	WUZHUOBIN
+ * @date	Oct.13.2018
+ * @since 	Oct.13.2018 
+*/
 class vtkBrainExtractionDecorator
 {
 public:
@@ -64,25 +94,5 @@ private:
 	vtkBrainExtractionDecorator& operator=(const vtkBrainExtractionDecorator &) = delete;
 	vtkBrainExtractionDecorator& operator=(vtkBrainExtractionDecorator&&) = delete;
 };
-
-//void binaryImageDataSource(
-//	vtkImageData *image,
-//	const double origin[3],
-//	const double spacing[3],
-//	const int extent[6],
-//	int scalarType,
-//	double label) {
-//	image->SetOrigin(origin[0], origin[1], origin[2]);
-//	image->SetSpacing(spacing[0], spacing[1], spacing[2]);
-//	image->SetExtent(extent[0], extent[1], extent[2], extent[3], extent[4], extent[5]);
-//	image->AllocateScalars(scalarType, 1);
-//	typedef double VTK_TT;
-//	for (vtkImageIterator<VTK_TT> it(image, image->GetExtent());
-//		!it.IsAtEnd(); it.NextSpan()) {
-//		for (VTK_TT *v = it.BeginSpan(); v != it.EndSpan(); ++v) {
-//			*v = label;
-//		}
-//	}
-//}
 
 #endif // !__VTK_BRAIN_EXTRACTION_DECORATOR_H__

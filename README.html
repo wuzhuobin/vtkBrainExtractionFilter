@@ -5,7 +5,15 @@
 </head>
 <body>
 <h1>vtkBrainExtractionFilter</h1>
-vtk Implementation of FSL Brain Extraction Tool <br>
+<p>
+  This filter is a vtk Implementation of FSL Brain Extraction Tool. 
+  Most of the algorithm is exactly the same as the source code in FSL. But the 
+  algorithm is now re-written in vtk without using the FSL data type. <br/>
+  Now the <a href="https://www.vtk.org/">vtk library</a>is the only dependency.
+  <br/>
+  The original paper of the algorithm <q><a href="README/SEG_BET_Fast robust automated brain_Smith_HBM2002.pdf">Fast robust automated brain extraction</a></q>
+</p>
+ <br>
 Samples: <br>
 <img src="README/mesh.png" alt="mesh" width="300">
 <img src="README/image.png" alt="image" width="300">

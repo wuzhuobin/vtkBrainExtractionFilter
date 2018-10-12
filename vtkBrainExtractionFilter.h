@@ -1,3 +1,23 @@
+/**
+ * @file	    vtkBrainExtractFilter.h
+ * @language    C++
+ * @author		WUZHUOBIN jiejin2022@163.com
+ * @since 		Aug.26.2017
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			This program is distributed in the hope that it will be useful, but	 *
+ *			WITHOUT ANY WARRANTY; without even the implied warranty of			 * 
+ *			MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.				 * 
+ *			See the LICENSE for more detail.									 * 
+ *			Copyright (c) WUZHUOBIN. All rights reserved.						 * 
+ *			See COPYRIGHT for more detail.										 * 
+ *			This software is distributed WITHOUT ANY WARRANTY; without even		 * 
+ *			the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR	 * 
+ *			PURPOSE.  See the above copyright notice for more information.		 *
+ *			Internal usage only, without the permission of the author, please DO *
+ *			NOT publish and distribute without the author's permission.  	     *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ */
 #ifndef __VTK_BRAIN_EXTRACTION_FILTER_H__
 #define __VTK_BRAIN_EXTRACTION_FILTER_H__
 #pragma once
@@ -9,6 +29,13 @@ class vtkImageData;
 class vtkPolyData;
 class vtkBrainExtractionDecorator;
 struct BET_Parameters;
+/**
+ * @class		vtkBrainExtractionFilter
+ * @brief 			
+ * @author 
+ * @date		
+ * @since 
+*/
 class vtkBrainExtractionFilter : public vtkPolyDataAlgorithm
 {
 public:
