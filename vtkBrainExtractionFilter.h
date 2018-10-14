@@ -31,21 +31,50 @@ class vtkBrainExtractionDecorator;
 struct BET_Parameters;
 /**
  * @class		vtkBrainExtractionFilter
- * @brief 			
- * @author 
- * @date		
- * @since 
+ * @brief 		A vtk implementation of brain extraction algorithm. 	
+ * @author		WUZHUOBIN 
+ * @date		Oct.13.2018
+ * @since		Oct.13.2018
+ * 
+ * The vtkBrainExtractionFilter is a vtk implementation of BET(Brain Extraction Tool) of 
+ * FSL. The original paper of this algorithm is reference in the README.MD. 
+ * The algorithm is written in vtk and try to remove the dependency of FSL's library. 
 */
-class vtkBrainExtractionFilter : public vtkPolyDataAlgorithm
+class VTKBRAINEXTRACTIONFILTER_EXPORT vtkBrainExtractionFilter : public vtkPolyDataAlgorithm
 {
-public:
+public:	
 	static vtkBrainExtractionFilter *New();
 	vtkTypeMacro(vtkBrainExtractionFilter, vtkPolyDataAlgorithm);
 	virtual void PrintSelf(ostream &os, vtkIndent indent) override;
+	/**
+	 * @fn		vtkImageData* GetOutputImage();
+	 * @brief	Get the brain segmentation image.
+	 * @return	A vtkImageData of brain segmentation. 
+	*/
 	vtkImageData* GetOutputImage();
+	/**
+	 * @fn		vtkAlgorithmOutput* GetOutputPortImage();
+	 * @brief	Get the brain segmentaiton outputport.
+	 * @return 	A output port. 
+	*/
 	vtkAlgorithmOutput* GetOutputPortImage();
-	
+	/**
+	 * @brief	Get Subdivision. 
+	 * @return	Subdivision.
+	 * @see 	Subdivision
+	 * 
+	 * The Subdivision is the for creating the sphere source. The sphere source is created 
+	 * from an icosahedron by doing a few times of subdivision/tessellation.  
+	*/
 	vtkGetMacro(Subdivision, int);
+	/**
+	 * @brief		Set Subdivision.
+	 * @param[in]	Subdivision Default is 4, it was clamp 0~20. 
+	 * @see 		Subdivision
+	 * 
+	 * The Subdivision is the for creating the sphere source. The sphere source is created 
+	 * from an icosahedron by doing a few times of subdivision/tessellation.  
+	*/
 	vtkSetClampMacro(Subdivision, int, 0, 20);
 
 	vtkGetMacro(NumOfIteration, int);
