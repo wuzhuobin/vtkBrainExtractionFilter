@@ -33,6 +33,7 @@ struct BET_Parameters;
  * @class		vtkBrainExtractionFilter
  * @brief 		A vtk implementation of brain extraction algorithm. 	
  * @author		WUZHUOBIN 
+ * @version		0.0
  * @date		Oct.13.2018
  * @since		Oct.13.2018
  * 

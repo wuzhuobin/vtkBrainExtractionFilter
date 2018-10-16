@@ -64,10 +64,11 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 		outInfo1->Get(vtkDataObject::DATA_OBJECT()));
 	this->decorator->generateSphere(this->Subdivision, output0);
 	(*this->bp) = this->decorator->initialParameters(input, output0, output0);
-	cerr << *this->bp;
+	// cerr << *this->bp;
 	this->UpdateProgress(0.1);
 	double fraction_threshold = 0.5;
 	vtkPolyData *originalPolyData = vtkPolyData::New();
+	originalPolyData->DeepCopy(output0);
 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
 		vtkBrainExtractionFilter::StepOfComputation(
 			input,
@@ -77,8 +78,35 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 			0,
 			pow(fraction_threshold, 0.275));
 			//0.5);
-		this->UpdateProgress(0.1 + 0.6 * this->IterationNumber / this->NumOfIteration);
+		this->UpdateProgress(0.1 + 0.4 * this->IterationNumber / this->NumOfIteration);
 	}
+	const double selfIntersectionThreshold = 4000;
+	int pass = 0;
+	// while (this->decorator->selfIntersection(originalPolyData, output0) > 4000) {
+	// 	vtkWarningMacro(<< "Self-intersection value over 4000. " << 
+	// 		"Trying to smooth the mesh. ");
+	// 	++pass;
+	// 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber)
+	// 	{
+	// 		double increateSmooth = pow(10.0, pass);
+	// 		if (this->IterationNumber > .75 * (double)this->NumOfIteration){
+	// 			increateSmooth = 4. * (1. - this->IterationNumber / (double)this->NumOfIteration) * (increateSmooth - 1.) + 1.;
+	// 		}
+	// 		vtkBrainExtractionFilter::StepOfComputation(
+	// 			input,
+	// 			output0,
+	// 			pass,
+	// 			this->SmoothArg,
+	// 			increateSmooth,
+	// 			pow(fraction_threshold, 0.275));
+	// 		this->UpdateProgress(0.5 + 0.4 * pass / 10 * this->IterationNumber / this->NumOfIteration);
+	// 	}
+	// 	if(pass >= 10){
+	// 		vtkWarningMacro(<< "Self-intersection value still over 4000." << 
+	// 			"Abandon smoothing. ");
+	// 		break;
+	// 	}
+	// }
 	originalPolyData->Delete();
 	output1->DeepCopy(input);
 	this->decorator->generateLabelImage(output1);

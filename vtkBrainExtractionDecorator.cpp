@@ -311,12 +311,16 @@ const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * origina
 		ml += originalDistances->GetTuple1(id);
 	}
 	ml /= numPoints;
+	// calculate self-intersection value.
 	input->BuildLinks();
 	input->BuildCells();
 	vtkIdType io;
 	vtkIdType i;
 	double pio[3];
 	double pi[3];
+	// calculate the distance between a point to every point in the mesh, except for itself and 
+	// its neighbours. And point i is the source, point j is the target. Distance between point i
+	// and point j.  
 	for (io = 0, i = 0; io < numPoints_o && i < numPoints; ++io, ++i) {
 		original->GetPoint(io, pio);
 		input->GetPoint(i, pi);
@@ -331,6 +335,10 @@ const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * origina
 			unsigned short ncells;
 			vtkIdType* cells;
 			input->GetPointCells(i, ncells, cells);
+			// Finding point i's cells and using these cells to find its neighbours. 
+			// checking whether point j is the same as the point i or the same as one 
+			// of its neighbours. If point j isn't one of the above situations, found 
+			// is false, calculate their distances.   
 			for (vtkIdType cid = 0; cid < ncells && !found; ++cid) {
 				vtkIdType npts; 
 				vtkIdType* pts;
@@ -348,7 +356,10 @@ const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * origina
 			}
 			if (!found) {
 				double dist = vtkMath::Distance2BetweenPoints(pi, pj);
+				// If distance is less than the mean neighbour's distance. The point pair
+				// (point i and point j) is considered intersection point pair. 
 				if (dist < ml * ml) {
+					// Using mean neighbour's distance as weight. 
 					dist = sqrt(dist) / ml;
 					double disto = vtkMath::Distance2BetweenPoints(pio, pjo);
 					disto = sqrt(disto) / mlo;

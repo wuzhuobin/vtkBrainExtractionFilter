@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		vtkSmartPointer<vtkBrainExtractionFilter>::New();
 	bef->SetInputData(reader->GetOutput());
 	bef->AddObserver(vtkCommand::ProgressEvent, progress);
-	bef->SetNumOfIteration(1000);
+	bef->SetNumOfIteration(100);
 	bef->SetSmoothArg(1);
 	bef->Update();
 	polyData = bef->GetOutput();
