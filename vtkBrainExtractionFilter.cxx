@@ -82,31 +82,31 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 	}
 	const double selfIntersectionThreshold = 4000;
 	int pass = 0;
-	// while (this->decorator->selfIntersection(originalPolyData, output0) > 4000) {
-	// 	vtkWarningMacro(<< "Self-intersection value over 4000. " << 
-	// 		"Trying to smooth the mesh. ");
-	// 	++pass;
-	// 	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber)
-	// 	{
-	// 		double increateSmooth = pow(10.0, pass);
-	// 		if (this->IterationNumber > .75 * (double)this->NumOfIteration){
-	// 			increateSmooth = 4. * (1. - this->IterationNumber / (double)this->NumOfIteration) * (increateSmooth - 1.) + 1.;
-	// 		}
-	// 		vtkBrainExtractionFilter::StepOfComputation(
-	// 			input,
-	// 			output0,
-	// 			pass,
-	// 			this->SmoothArg,
-	// 			increateSmooth,
-	// 			pow(fraction_threshold, 0.275));
-	// 		this->UpdateProgress(0.5 + 0.4 * pass / 10 * this->IterationNumber / this->NumOfIteration);
-	// 	}
-	// 	if(pass >= 10){
-	// 		vtkWarningMacro(<< "Self-intersection value still over 4000." << 
-	// 			"Abandon smoothing. ");
-	// 		break;
-	// 	}
-	// }
+	while (this->decorator->selfIntersection(originalPolyData, output0) > 4000) {
+		vtkWarningMacro(<< "Self-intersection value over 4000. " << 
+			"Trying to smooth the mesh. ");
+		++pass;
+		for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber)
+		{
+			double increateSmooth = pow(10.0, pass);
+			if (this->IterationNumber > .75 * (double)this->NumOfIteration){
+				increateSmooth = 4. * (1. - this->IterationNumber / (double)this->NumOfIteration) * (increateSmooth - 1.) + 1.;
+			}
+			vtkBrainExtractionFilter::StepOfComputation(
+				input,
+				output0,
+				pass,
+				this->SmoothArg,
+				increateSmooth,
+				pow(fraction_threshold, 0.275));
+			this->UpdateProgress(0.5 + 0.4 * pass / 10 * this->IterationNumber / this->NumOfIteration);
+		}
+		if(pass >= 10){
+			vtkWarningMacro(<< "Self-intersection value still over 4000." << 
+				"Abandon smoothing. ");
+			break;
+		}
+	}
 	originalPolyData->Delete();
 	output1->DeepCopy(input);
 	this->decorator->generateLabelImage(output1);

@@ -230,7 +230,7 @@ void vtkBrainExtractionDecorator::mediumDistanceOfNeighbours(vtkPolyData * polyD
 {
 	// Compute point neighbour distance, which are the means of a point's distance of neighbour points
 	// The name of the array is "Mean distance"
-	polyData->BuildCells();
+	// polyData->BuildCells();
 	vtkNew<vtkFloatArray> meanDistance;
 	meanDistance->Allocate(polyData->GetNumberOfPoints());
 	meanDistance->SetNumberOfComponents(1);
@@ -312,12 +312,12 @@ const double vtkBrainExtractionDecorator::selfIntersection(vtkPolyData * origina
 	}
 	ml /= numPoints;
 	// calculate self-intersection value.
-	input->BuildLinks();
-	input->BuildCells();
+	// input->BuildCells();
 	vtkIdType io;
 	vtkIdType i;
 	double pio[3];
 	double pi[3];
+	input->BuildLinks();
 	// calculate the distance between a point to every point in the mesh, except for itself and 
 	// its neighbours. And point i is the source, point j is the target. Distance between point i
 	// and point j.  
