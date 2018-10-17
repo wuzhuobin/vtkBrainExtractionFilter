@@ -235,7 +235,7 @@ void vtkBrainExtractionFilter::StepOfComputation(
 	}
 	//////////////////////////////////////// u3 ////////////////////////////////////////
 	const float normal_max_update_fraction = 0.5f;
-	const float lambda_fit = 0.1;
+	const float lambda_fit = 0.9;
 	const double *origin = data->GetOrigin();
 	const double *spacing = data->GetSpacing();
 	const int *extent = data->GetExtent();
@@ -363,6 +363,29 @@ void vtkBrainExtractionFilter::StepOfComputation(
 		vtkMath::Add(u_f + 3 * id, u3_f + 3 * id, u_f + 3 * id);
 		vtkMath::Add(points_f + 3 * id, u_f + 3 * id, points_f + 3 * id);
 		meanMovement += vtkMath::Norm(u_f + 3 * id);
+		// if(id == 500){
+		// 	cerr << "u1_f: ";
+		// 	cerr << u1_f[3 * 500 + 0] << ' ';
+		// 	cerr << u1_f[3 * 500 + 1] << ' ';
+		// 	cerr << u1_f[3 * 500 + 2] << ' ';
+		// 	cerr << '\n';
+		// 	cerr << "u2_f: ";
+		// 	cerr << u2_f[3 * 500 + 0] << ' ';
+		// 	cerr << u2_f[3 * 500 + 1] << ' ';
+		// 	cerr << u2_f[3 * 500 + 2] << ' ';
+		// 	cerr << '\n';
+		// 	cerr << "u3_f: ";
+		// 	cerr << u3_f[3 * 500 + 0] << ' ';
+		// 	cerr << u3_f[3 * 500 + 1] << ' ';
+		// 	cerr << u3_f[3 * 500 + 2] << ' ';
+		// 	cerr << '\n';
+		// 	cerr << "u_f: ";
+		// 	cerr << u_f[3 * 500 + 0] << ' ';
+		// 	cerr << u_f[3 * 500 + 1] << ' ';
+		// 	cerr << u_f[3 * 500 + 2] << ' ';
+		// 	cerr << '\n';
+		// }
 	}
-	meanMovement /= numPoints;
+	// meanMovement /= numPoints;
+	// cerr << "meanMovement: " << meanMovement << "\n";
 }

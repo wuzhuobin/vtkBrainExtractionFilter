@@ -77,10 +77,33 @@ public:
 	 * from an icosahedron by doing a few times of subdivision/tessellation.  
 	*/
 	vtkSetClampMacro(Subdivision, int, 0, 20);
-
+	/**
+	 * @brief		Get the number of iteraction. 
+	 * @return		NumOfIteraction
+	 * @see			NumOfIteraction
+	 * 
+	 * The number of iteraction for executing #StepOfComputation(), which is 
+	 * an iteraction number. 
+	*/
 	vtkGetMacro(NumOfIteration, int);
+	/**
+	 * @brief 		Set the number of iteraction. 
+	 * @param[in]	NumberOfIteraction default is 1000, clamped to 0 - VTK_INT_MAX
+	 * @see			NumOfIteraction
+	 * 
+	 * The number of iteraction for executing #StepOfComputation(), which is 
+	 * an iteraction number. 
+	*/
 	vtkSetClampMacro(NumOfIteration, int, 0, VTK_INT_MAX);
-
+	/**
+	 * @brief		Get current iteraction. 
+	 * @return		IteractionNumber
+	 * @see			IteractionNumber
+	 * 
+	 * Get the current iteraction number while the function thread is blocking when 
+	 * executing iteraction loop. So it only possible get the number when the 
+	 * algorithm finish. 
+	*/
 	vtkGetMacro(IterationNumber, int);
 
 	vtkGetMacro(SmoothArg, double);
@@ -105,12 +128,12 @@ protected:
 //////////////////////////////////////// Parameter ////////////////////////////////////////
 	static const int d1 = 7;				///< How far into the brain the minimum intensity is searched for. In parper, d1 = 20mm.
 	static const int d2 = 3;				///< How far into the brain the minimum intensity is searched for. In paper, d2 = d1/2.
-	int Subdivision;
-	int NumOfIteration;
-	int IterationNumber;
-	double SmoothArg;
-	double BrainCenter[3];
-	double InHomogeneityDirection[3];
+	int Subdivision;						///< Subdivision of the icosahedron to generate a sphere.
+	int NumOfIteration;						///< Number of iteraction
+	int IterationNumber;					///< Current iteraction number. 
+	double SmoothArg;						///< Smooth arguement.
+	double BrainCenter[3];					///< Center of brain.
+	double InHomogeneityDirection[3];		///< Inhomogeneity direction of the MRI image.
 private:
 	vtkBrainExtractionFilter(const vtkBrainExtractionFilter&) VTK_DELETE_FUNCTION;
 	vtkBrainExtractionFilter(vtkBrainExtractionFilter&&) VTK_DELETE_FUNCTION;
