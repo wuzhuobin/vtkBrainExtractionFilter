@@ -8,9 +8,17 @@
 #include <vtkCallbackCommand.h>
 int main(int argc, char **argv)
 {
-	vtkSmartPointer<vtkPolyData> polyData =
-		vtkSmartPointer<vtkPolyData>::New();
-
+	argc = 3;
+	argv[1] = "T2.nii";
+	argv[2] = "output.vtk";
+	if (argc != 3) {
+		cerr << "Number of input parameters should be 2. ";
+		return 1;
+	}
+	cerr << "Since the vtkNIFTIImageReader does not care about the orientation "
+		<< "and origin information of the original image. \n"
+		<< "Please make sure they are zeros. \n"
+		<< "OR THE RESULT MAY BE INCORRECT. \n";
 	auto reader =
 		vtkSmartPointer<vtkNIFTIImageReader>::New();
 	reader->SetFileName("T2.nii");
@@ -22,7 +30,7 @@ int main(int argc, char **argv)
                                      void *clientdata, void *calldata) {
 		vtkBrainExtractionFilter *bef = reinterpret_cast<vtkBrainExtractionFilter*>(caller);
 		//vtkWarningWithObjectMacro(bef, << "Progress: " << bef->GetProgress() << '.');
-		cerr << "Progress: " << bef->GetProgress() << '.' << '\n';
+		cout << "Progress: " << bef->GetProgress() << '.' << '\n';
 	});
 
 	vtkSmartPointer<vtkBrainExtractionFilter> bef =
@@ -32,18 +40,17 @@ int main(int argc, char **argv)
 	bef->SetNumOfIteration(1000);
 	bef->SetSmoothArg(1);
 	bef->Update();
-	polyData = bef->GetOutput();
 
 	vtkSmartPointer<vtkPolyDataWriter> polyDataWriter =
 		vtkSmartPointer<vtkPolyDataWriter>::New();
-	polyDataWriter->SetInputData(polyData);
-	polyDataWriter->SetFileName("sphere.vtk");
+	polyDataWriter->SetInputData(bef->GetOutput());
+	polyDataWriter->SetFileName(argv[2]);
 	polyDataWriter->Write();
 
 	vtkSmartPointer<vtkNIFTIImageWriter> imageWriter =
 		vtkSmartPointer<vtkNIFTIImageWriter>::New();
 	imageWriter->SetInputConnection(bef->GetOutputPortImage());
-	imageWriter->SetFileName("sphere.nii");
+	imageWriter->SetFileName((std::string(argv[2]) + ".nii").c_str());
 	imageWriter->Write();
 
 	cin.get();
