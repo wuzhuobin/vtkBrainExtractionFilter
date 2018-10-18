@@ -110,6 +110,17 @@ public:
 	vtkSetMacro(SmoothArg, double);
 
 	vtkGetVector3Macro(BrainCenter, double);
+
+	vtkGetVector3Macro(InHomogeneityDirection, double);
+	vtkSetVector3Macro(InHomogeneityDirection, double);
+
+	vtkGetMacro(SelfIntersectionChecking, bool);
+	vtkSetMacro(SelfIntersectionChecking, bool);
+	vtkBooleanMacro(SelfIntersectionChecking, bool);
+
+	vtkGetMacro(AlwaysRestartComputation, bool);
+	vtkSetMacro(AlwaysRestartComputation, bool);
+	vtkBooleanMacro(AlwaysRestartComputation, bool);
 protected:
 	vtkBrainExtractionFilter();
 	virtual ~vtkBrainExtractionFilter() override;
@@ -134,6 +145,8 @@ protected:
 	double SmoothArg;						///< Smooth arguement.
 	double BrainCenter[3];					///< Center of brain.
 	double InHomogeneityDirection[3];		///< Inhomogeneity direction of the MRI image.
+	bool SelfIntersectionChecking;
+	bool AlwaysRestartComputation;
 private:
 	vtkBrainExtractionFilter(const vtkBrainExtractionFilter&) VTK_DELETE_FUNCTION;
 	vtkBrainExtractionFilter(vtkBrainExtractionFilter&&) VTK_DELETE_FUNCTION;

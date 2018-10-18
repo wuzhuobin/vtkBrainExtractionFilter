@@ -39,6 +39,8 @@ vtkBrainExtractionFilter::vtkBrainExtractionFilter()
 	this->InHomogeneityDirection[0] = 0;
 	this->InHomogeneityDirection[1] = 0;
 	this->InHomogeneityDirection[2] = 0;
+	this->SelfIntersectionChecking = false;
+	this->AlwaysRestartComputation = true;
 	this->decorator = new vtkBrainExtractionDecorator;
 	this->bp = new BET_Parameters;
 }
@@ -62,14 +64,19 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 		outInfo0->Get(vtkDataObject::DATA_OBJECT()));
 	vtkImageData *output1 = vtkImageData::SafeDownCast(
 		outInfo1->Get(vtkDataObject::DATA_OBJECT()));
-	this->decorator->generateSphere(this->Subdivision, output0);
-	(*this->bp) = this->decorator->initialParameters(input, output0, output0);
-	// cerr << *this->bp;
+	if (this->IterationNumber == 0 ||
+		this->AlwaysRestartComputation)
+	{
+		this->IterationNumber = 0;
+		this->decorator->generateSphere(this->Subdivision);
+		(*this->bp) = this->decorator->initialParameters(input);
+	}
+	vtkPolyData *sphere = this->decorator->getSphere();
+	memcpy(this->BrainCenter, &this->bp->com, sizeof(double) * 3);
 	this->UpdateProgress(0.1);
 	double fraction_threshold = 0.5;
-	vtkPolyData *originalPolyData = vtkPolyData::New();
-	originalPolyData->DeepCopy(output0);
-	for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
+	output0->DeepCopy(sphere);
+	for (; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber) {
 		vtkBrainExtractionFilter::StepOfComputation(
 			input,
 			output0,
@@ -82,11 +89,11 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 	}
 	const double selfIntersectionThreshold = 4000;
 	int pass = 0;
-	while (this->decorator->selfIntersection(originalPolyData, output0) > 4000) {
+	while (this->SelfIntersectionChecking && this->decorator->selfIntersection(sphere, output0) > 4000) {
 		vtkWarningMacro(<< "Self-intersection value over 4000. " << 
 			"Trying to smooth the mesh. ");
 		++pass;
-		for (this->IterationNumber = 0; this->IterationNumber < this->NumOfIteration; ++this->IterationNumber)
+		for (; this->IterationNumber < (this->NumOfIteration * pass); ++this->IterationNumber)
 		{
 			double increateSmooth = pow(10.0, pass);
 			if (this->IterationNumber > .75 * (double)this->NumOfIteration){
@@ -107,7 +114,6 @@ int vtkBrainExtractionFilter::RequestData(vtkInformation * vtkNotUsed(request), 
 			break;
 		}
 	}
-	originalPolyData->Delete();
 	output1->DeepCopy(input);
 	this->decorator->generateLabelImage(output1);
 	output1->ShallowCopy(this->decorator->polyDataToImage(output0, output1));

@@ -75,15 +75,17 @@ class vtkBrainExtractionDecorator
 public:
 	vtkBrainExtractionDecorator();
 	~vtkBrainExtractionDecorator();
-	void generateSphere(const int &subdivision, vtkPolyData *data);
+	void generateSphere(const int &subdivision);
+	vtkPolyData* getSphere();
 	void generateLabelImage(vtkImageData *image, double label = 1.0);
 	vtkImageData* polyDataToImage(vtkPolyData* polyData, vtkImageData *imageData);
-	BET_Parameters initialParameters(vtkImageData *imageData, vtkPolyData *polyData, vtkPolyData *output);
+	BET_Parameters initialParameters(vtkImageData *imageData);
 	void mediumDistanceOfNeighbours(vtkPolyData *polyData) const;
 	void normalsCentroids(vtkPolyData *input, vtkPolyData *output);
 	const double selfIntersection(vtkPolyData *original, vtkPolyData *input) const;
 private: 
 	vtkPlatonicSolidSource *icosahedronSource;
+	vtkPolyData *sphere;
 	vtkLinearSubdivisionFilter *linearSubdivisionFilter;
 	vtkImageStencil *imageStencil;
 	vtkPolyDataToImageStencil *polyDataToImageStencil;

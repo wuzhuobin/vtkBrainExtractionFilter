@@ -61,6 +61,7 @@ vtkBrainExtractionDecorator::vtkBrainExtractionDecorator()
 	// create Icosahedron, whose number of faces is twenty
 	this->icosahedronSource = vtkPlatonicSolidSource::New();
 	this->icosahedronSource->SetSolidTypeToIcosahedron();
+	this->sphere = vtkPolyData::New();
 	// re-tesselates.
 	this->linearSubdivisionFilter = vtkLinearSubdivisionFilter::New();
 	this->linearSubdivisionFilter->SetInputConnection(this->icosahedronSource->GetOutputPort());
@@ -83,19 +84,20 @@ vtkBrainExtractionDecorator::vtkBrainExtractionDecorator()
 vtkBrainExtractionDecorator::~vtkBrainExtractionDecorator()
 {
 	this->icosahedronSource->Delete();
+	this->sphere->Delete();
 	this->linearSubdivisionFilter->Delete();
 	this->polyDataToImageStencil->Delete();
 	this->imageStencil->Delete();
 	this->polyDataNormalsCentroids->Delete();
 }
 
-void vtkBrainExtractionDecorator::generateSphere(const int & subdivision, vtkPolyData * data)
+void vtkBrainExtractionDecorator::generateSphere(const int & subdivision)
 {
 	this->linearSubdivisionFilter->SetNumberOfSubdivisions(subdivision);
 	this->linearSubdivisionFilter->Update();
-	data->ShallowCopy(this->linearSubdivisionFilter->GetOutput());
-	data->GetCellData()->RemoveArray(0);
-	vtkPoints *points = data->GetPoints();
+	this->sphere->ShallowCopy(this->linearSubdivisionFilter->GetOutput());
+	this->sphere->GetCellData()->RemoveArray(0);
+	vtkPoints *points = this->sphere->GetPoints();
 	vtkArrayIterator *it = points->GetData()->NewIterator();
 	switch (points->GetDataType())
 	{
@@ -110,7 +112,12 @@ void vtkBrainExtractionDecorator::generateSphere(const int & subdivision, vtkPol
 	}
 	}
 	it->Delete();
-	data->Modified();
+	this->sphere->Modified();
+}
+
+vtkPolyData *vtkBrainExtractionDecorator::getSphere()
+{
+	return this->sphere;
 }
 
 void vtkBrainExtractionDecorator::generateLabelImage(vtkImageData * image, double label)
@@ -144,7 +151,7 @@ vtkImageData * vtkBrainExtractionDecorator::polyDataToImage(vtkPolyData * polyDa
 	return this->imageStencil->GetOutput();
 }
 
-BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * imageData, vtkPolyData * polyData, vtkPolyData * output)
+BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * imageData)
 {
 	BET_Parameters bp;
 	// calculate bp.max, bp.min, bp.t, bp.t2, bp.t98;
@@ -197,10 +204,10 @@ BET_Parameters vtkBrainExtractionDecorator::initialParameters(vtkImageData * ima
 	transform->Scale(bp.radius * 0.5, bp.radius * 0.5, bp.radius * 0.5);
 	vtkSmartPointer<vtkTransformPolyDataFilter> transformPolyData =
 		vtkSmartPointer<vtkTransformPolyDataFilter>::New();
-	transformPolyData->SetInputData(polyData);
+	transformPolyData->SetInputData(this->sphere);
 	transformPolyData->SetTransform(transform);
 	transformPolyData->Update();
-	output->ShallowCopy(transformPolyData->GetOutput());
+	this->sphere->ShallowCopy(transformPolyData->GetOutput());
 	// calculate bp.tm, medium.
 	std::vector<double> voxels;
 	for (it.Initialize(imageData); !it.IsAtEnd(); it.Next()) {
