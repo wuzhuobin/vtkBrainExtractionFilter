@@ -5,4 +5,4 @@ Now the [vtk library](https://www.vtk.org/)is the only dependency.
 The original paper of the algorithm <q>[Fast robust automated brain extraction](README/SEG_BET_Fast robust automated brain_Smith_HBM2002.pdf)</q>
 
 Samples:  
-[Sample Download. Issue #3](https://github.com/wuzhuobin/vtkBrainExtractionFilter/issues/3) ![mesh](README/mesh.png) ![image](README/image.png)
+[Sample Download. ](https://github.com/wuzhuobin/vtkBrainExtractionFilter/issues/3) Issue #3 ![mesh](README/mesh.png) ![image](README/image.png)
